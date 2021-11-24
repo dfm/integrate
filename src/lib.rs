@@ -2,10 +2,12 @@ pub mod gravity;
 pub mod leapfrog;
 pub mod stepper;
 pub mod system;
+pub mod vec3;
 
 pub use gravity::Gravity;
 pub use stepper::Stepper;
 pub use system::System;
+pub use vec3::Vec3;
 
 pub type Float = f64;
 

@@ -1,17 +1,25 @@
-use crate::{Float, Gravity, Integrator};
+use crate::{Float, Gravity, Integrator, Vec3};
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Body {
     pub mass: Float,
-    pub position: [Float; 3],
-    pub velocity: [Float; 3],
-    pub acceleration: [Float; 3],
+    pub position: Vec3,
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Particle {
+    pub position: Vec3,
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
 }
 
 #[derive(Clone, Debug)]
 pub struct System {
     pub t: Float,
     pub bodies: Vec<Body>,
+    pub particles: Vec<Particle>,
 }
 
 impl System {
@@ -19,24 +27,16 @@ impl System {
         System {
             t: 0.0,
             bodies: vec![],
+            particles: vec![],
         }
     }
 
-    pub fn add_body(
-        &mut self,
-        mass: Float,
-        x: Float,
-        y: Float,
-        z: Float,
-        vx: Float,
-        vy: Float,
-        vz: Float,
-    ) {
+    pub fn add_body(&mut self, mass: Float, position: Vec3, velocity: Vec3) {
         self.bodies.push(Body {
             mass,
-            position: [x, y, z],
-            velocity: [vx, vy, vz],
-            acceleration: [0.0, 0.0, 0.0],
+            position,
+            velocity,
+            acceleration: Vec3::zero(),
         })
     }
 

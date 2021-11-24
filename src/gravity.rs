@@ -19,40 +19,47 @@ impl BasicGravity {
 
 impl Gravity for BasicGravity {
     fn calculate_acceleration(&self, system: &mut System) {
-        let mut acceleration: Vec<[Float; 3]> = Vec::with_capacity(system.bodies.len());
-        for acc in acceleration.iter_mut() {
-            acc[0] = 0.0;
-            acc[1] = 0.0;
-            acc[2] = 0.0;
+        // First zero out all the accelerations
+        for body in system.bodies.iter_mut() {
+            body.acceleration.set_zero();
         }
-        for (i, body1) in system.bodies.iter().enumerate() {
-            for (j, body2) in system.bodies.iter().skip(i + 1).enumerate() {
-                let delta: [Float; 3] = [
-                    body1.position[0] - body2.position[0],
-                    body1.position[1] - body2.position[1],
-                    body1.position[2] - body2.position[2],
-                ];
-                let r2 = delta[0] * delta[0]
-                    + delta[1] * delta[1]
-                    + delta[2] * delta[2]
-                    + self.softening;
-                let factor = GRAV / (r2 * r2.sqrt());
-                let factor1 = factor * body1.mass;
-                let factor2 = -factor * body2.mass;
 
-                // Using unsafe blocks to avoid bounds checking; we know we're in bounds
-                unsafe {
-                    let acc = acceleration.get_unchecked_mut(i);
-                    acc[0] += factor2 * delta[0];
-                    acc[1] += factor2 * delta[1];
-                    acc[2] += factor2 * delta[2];
+        // We need to compute the mutual accelerations in an unsafe block since we're updating the
+        // bodies in place, and we want to avoid bounds checking
+        let num_bodies = system.bodies.len();
+        unsafe {
+            for i in 0..num_bodies {
+                for j in (i + 1)..num_bodies {
+                    let (delta, factor1, factor2) = {
+                        let body1 = system.bodies.get_unchecked(i);
+                        let body2 = system.bodies.get_unchecked(j);
+                        let delta = body1.position - body2.position;
+                        let r2 = delta.squared_norm() + self.softening;
+                        let factor = GRAV / (r2 * r2.sqrt());
+                        (delta, factor * body1.mass, -factor * body2.mass)
+                    };
+
+                    {
+                        let body1 = system.bodies.get_unchecked_mut(i);
+                        body1.acceleration.inplace_add_scaled(factor2, &delta);
+                    }
+
+                    {
+                        let body2 = system.bodies.get_unchecked_mut(j);
+                        body2.acceleration.inplace_add_scaled(factor1, &delta);
+                    }
                 }
-                unsafe {
-                    let acc = acceleration.get_unchecked_mut(j);
-                    acc[0] += factor1 * delta[0];
-                    acc[1] += factor1 * delta[1];
-                    acc[2] += factor1 * delta[2];
-                }
+            }
+        }
+
+        // Update the accelerations for the test particles
+        for particle in system.particles.iter_mut() {
+            particle.acceleration.set_zero();
+            for body in system.bodies.iter() {
+                let delta = body.position - particle.position;
+                let r2 = delta.squared_norm() + self.softening;
+                let factor = GRAV * body.mass / (r2 * r2.sqrt());
+                particle.acceleration.inplace_add_scaled(factor, &delta);
             }
         }
     }
