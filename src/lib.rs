@@ -17,6 +17,10 @@ pub trait Integrator {
     fn part2(&self, system: &mut system::System);
 }
 
+pub trait Force {
+    fn calculate_acceleration(&self, system: &mut System);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
