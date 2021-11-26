@@ -1,4 +1,4 @@
-use crate::{Float, Force, System, Vec3};
+use crate::{system::Body, Float, Force, System, Vec3};
 
 const GRAV: Float = 1.0;
 
@@ -13,48 +13,47 @@ impl Gravity {
     }
 }
 
-fn calc_grav_factor(softening: Float, delta: &Vec3) -> Float {
+impl Force for Gravity {
+    fn calculate_acceleration(&self, system: &mut System) {
+        // Note: we assume that the acclerations were _already_ zeroed
+        apply_pairwise_self_gravity(self.softening, &mut system.bodies);
+
+        for particle in system.particles.iter_mut() {
+            for body in system.bodies.iter_mut() {
+                let delta = body.coord.position - particle.coord.position;
+                let factor = body.mass * calc_gravity_factor(self.softening, &delta);
+                particle
+                    .coord
+                    .acceleration
+                    .inplace_add_scaled(factor, &delta);
+            }
+        }
+    }
+}
+
+fn calc_gravity_factor(softening: Float, delta: &Vec3) -> Float {
     let r2 = delta.squared_norm() + softening;
     GRAV / (r2 * r2.sqrt())
 }
 
-impl Force for Gravity {
-    fn calculate_acceleration(&self, system: &mut System) {
-        // Note: we assume that the acclerations were _already_ zeroed
-
-        // We need to compute the mutual accelerations in an unsafe block since we're updating the
-        // bodies in place, and we want to avoid bounds checking
-        let body_iter = system.body_masses.iter().zip(system.body_positions.iter());
-        for (i, (m1, &x1)) in body_iter.clone().enumerate() {
-            for (j, (m2, &x2)) in body_iter.clone().skip(i + 1).enumerate() {
-                let delta = x1 - x2;
-                let factor = calc_grav_factor(self.softening, &delta);
-                let factor1 = factor * m1;
-                let factor2 = -factor * m2;
-
-                unsafe {
-                    let acc = system.body_accelerations.get_unchecked_mut(i);
-                    acc.inplace_add_scaled(factor2, &delta);
-                }
-
-                unsafe {
-                    let acc = system.body_accelerations.get_unchecked_mut(i + 1 + j);
-                    acc.inplace_add_scaled(factor1, &delta);
-                }
-            }
+fn apply_pairwise_self_gravity(softening: Float, bodies: &mut [Body]) {
+    if let Some((first, others)) = bodies.split_first_mut() {
+        let m1 = first.mass;
+        let x1 = first.coord.position;
+        for other in others.iter_mut() {
+            let m2 = other.mass;
+            let x2 = other.coord.position;
+            let delta = x1 - x2;
+            let factor = calc_gravity_factor(softening, &delta);
+            first
+                .coord
+                .acceleration
+                .inplace_add_scaled(-factor * m2, &delta);
+            other
+                .coord
+                .acceleration
+                .inplace_add_scaled(factor * m1, &delta);
         }
-
-        // Update the accelerations for the test particles
-        for (&px, pa) in system
-            .particle_positions
-            .iter()
-            .zip(system.particle_accelerations.iter_mut())
-        {
-            for (mass, &x) in body_iter.clone() {
-                let delta = x - px;
-                let factor = mass * calc_grav_factor(self.softening, &delta);
-                pa.inplace_add_scaled(factor, &delta);
-            }
-        }
+        apply_pairwise_self_gravity(softening, others);
     }
 }

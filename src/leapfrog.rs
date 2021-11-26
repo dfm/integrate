@@ -11,48 +11,47 @@ impl Leapfrog {
     }
 }
 
-macro_rules! leapfrog_update {
-    ( $eps:expr, $x:expr, $dx:expr ) => {
-        for (a, b) in $x.iter_mut().zip($dx.iter()) {
-            a.inplace_add_scaled($eps, &b);
-        }
-    };
-}
-
 impl Integrator for Leapfrog {
     fn init(&self) {}
 
     fn part1(&self, system: &mut System) {
+        macro_rules! leapfrog_update1 {
+            ( $target:expr, $eps:expr ) => {
+                $target.iter_mut().for_each(|target| {
+                    target
+                        .coord
+                        .position
+                        .inplace_add_scaled($eps, &target.coord.velocity)
+                });
+            };
+        }
+
         let half_dt = 0.5 * self.dt;
-
-        leapfrog_update!(half_dt, system.body_positions, system.body_velocities);
-        leapfrog_update!(
-            half_dt,
-            system.particle_positions,
-            system.particle_velocities
-        );
-
+        leapfrog_update1!(system.bodies, half_dt);
+        leapfrog_update1!(system.particles, half_dt);
         system.t += half_dt;
     }
 
     fn part2(&self, system: &mut System) {
+        macro_rules! leapfrog_update2 {
+            ( $target:expr, $eps:expr, $half_eps:expr ) => {
+                $target.iter_mut().for_each(|target| {
+                    target
+                        .coord
+                        .velocity
+                        .inplace_add_scaled($eps, &target.coord.acceleration);
+                    target
+                        .coord
+                        .position
+                        .inplace_add_scaled($half_eps, &target.coord.velocity)
+                });
+            };
+        }
+
         let dt = self.dt;
         let half_dt = 0.5 * self.dt;
-
-        leapfrog_update!(dt, system.body_velocities, system.body_accelerations);
-        leapfrog_update!(
-            dt,
-            system.particle_velocities,
-            system.particle_accelerations
-        );
-
-        leapfrog_update!(half_dt, system.body_positions, system.body_velocities);
-        leapfrog_update!(
-            half_dt,
-            system.particle_positions,
-            system.particle_velocities
-        );
-
+        leapfrog_update2!(system.bodies, dt, half_dt);
+        leapfrog_update2!(system.particles, dt, half_dt);
         system.t += half_dt;
     }
 }

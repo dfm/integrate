@@ -15,5 +15,5 @@ fn main() {
     }
 
     println!("{}", system.current_time());
-    println!("{:?}", system.body_positions()[1]);
+    println!("{:?}", system.bodies[1]);
 }
