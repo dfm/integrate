@@ -9,6 +9,10 @@ repository = "https://github.com/dfm/integrate"
 
 [dependencies]
 
+[features]
+f32 = []
+2d = []
+
 [profile.release]
 opt-level = 3
 codegen-units = 1

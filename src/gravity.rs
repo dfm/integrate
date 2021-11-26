@@ -1,27 +1,43 @@
-use crate::{system::Body, Float, Force, System, Vec3};
-
-const GRAV: Float = 1.0;
+use crate::{
+    system::{Body, Configuration},
+    Float, Force, Vector,
+};
 
 #[derive(Clone, Debug)]
 pub struct Gravity {
+    constant: Float,
     softening: Float,
 }
 
 impl Gravity {
-    pub fn new(softening: Float) -> Self {
-        Self { softening }
+    pub fn set_constant(&mut self, constant: Float) -> &mut Self {
+        self.constant = constant;
+        self
+    }
+
+    pub fn set_softening(&mut self, softening: Float) -> &mut Self {
+        self.softening = softening;
+        self
+    }
+}
+
+impl Default for Gravity {
+    fn default() -> Self {
+        Self {
+            constant: 1.0,
+            softening: 0.0,
+        }
     }
 }
 
 impl Force for Gravity {
-    fn calculate_acceleration(&self, system: &mut System) {
-        // Note: we assume that the acclerations were _already_ zeroed
-        apply_pairwise_self_gravity(self.softening, &mut system.bodies);
+    fn accumulate_accelerations(&self, configuration: &mut Configuration) {
+        apply_pairwise_self_gravity(self.constant, self.softening, &mut configuration.bodies);
 
-        for particle in system.particles.iter_mut() {
-            for body in system.bodies.iter_mut() {
+        for particle in configuration.particles.iter_mut() {
+            for body in configuration.bodies.iter_mut() {
                 let delta = body.coord.position - particle.coord.position;
-                let factor = body.mass * calc_gravity_factor(self.softening, &delta);
+                let factor = body.mass * calc_gravity_factor(self.constant, self.softening, &delta);
                 particle
                     .coord
                     .acceleration
@@ -31,12 +47,12 @@ impl Force for Gravity {
     }
 }
 
-fn calc_gravity_factor(softening: Float, delta: &Vec3) -> Float {
+fn calc_gravity_factor(constant: Float, softening: Float, delta: &Vector) -> Float {
     let r2 = delta.squared_norm() + softening;
-    GRAV / (r2 * r2.sqrt())
+    constant / (r2 * r2.sqrt())
 }
 
-fn apply_pairwise_self_gravity(softening: Float, bodies: &mut [Body]) {
+fn apply_pairwise_self_gravity(constant: Float, softening: Float, bodies: &mut [Body]) {
     if let Some((first, others)) = bodies.split_first_mut() {
         let m1 = first.mass;
         let x1 = first.coord.position;
@@ -44,7 +60,7 @@ fn apply_pairwise_self_gravity(softening: Float, bodies: &mut [Body]) {
             let m2 = other.mass;
             let x2 = other.coord.position;
             let delta = x1 - x2;
-            let factor = calc_gravity_factor(softening, &delta);
+            let factor = calc_gravity_factor(constant, softening, &delta);
             first
                 .coord
                 .acceleration
@@ -54,6 +70,6 @@ fn apply_pairwise_self_gravity(softening: Float, bodies: &mut [Body]) {
                 .acceleration
                 .inplace_add_scaled(factor * m1, &delta);
         }
-        apply_pairwise_self_gravity(softening, others);
+        apply_pairwise_self_gravity(constant, softening, others);
     }
 }

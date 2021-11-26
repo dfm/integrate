@@ -1,30 +1,25 @@
 pub mod gravity;
 pub mod leapfrog;
-pub mod stepper;
+pub mod math;
 pub mod system;
-pub mod vec3;
 
-pub use gravity::Gravity;
-pub use stepper::Stepper;
-pub use system::System;
-pub use vec3::Vec3;
+pub use {gravity::Gravity, system::System};
 
+#[cfg(feature = "f32")]
+pub type Float = f32;
+#[cfg(not(feature = "f32"))]
 pub type Float = f64;
+
+#[cfg(feature = "2d")]
+pub type Vector = math::Vec2;
+#[cfg(not(feature = "2d"))]
+pub type Vector = math::Vec3;
 
 pub trait Integrator {
     fn init(&self);
-    fn part1(&self, system: &mut system::System);
-    fn part2(&self, system: &mut system::System);
+    fn step(&self, dt: Float, system: &mut system::System);
 }
 
 pub trait Force {
-    fn calculate_acceleration(&self, system: &mut System);
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+    fn accumulate_accelerations(&self, system: &mut system::Configuration);
 }
