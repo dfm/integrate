@@ -25,10 +25,14 @@ impl Integrator for Leapfrog {
         system.compute_accelerations();
 
         // Take the second step and synchronize
-        system.configuration.iter_coords_mut().for_each(|coord| {
-            coord.velocity.inplace_add_scaled(dt, &coord.acceleration);
-            coord.position.inplace_add_scaled(half_dt, &coord.velocity);
-        });
+        system
+            .configuration
+            .iter_coords_mut()
+            .zip(system.workspace.iter_accels_mut())
+            .for_each(|(coord, acc)| {
+                coord.velocity.inplace_add_scaled(dt, &acc);
+                coord.position.inplace_add_scaled(half_dt, &coord.velocity);
+            });
         system.t += half_dt;
     }
 }

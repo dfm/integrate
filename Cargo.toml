@@ -8,6 +8,7 @@ description = "Integrating some orbits"
 repository = "https://github.com/dfm/integrate"
 
 [dependencies]
+rayon = "1.5"
 
 [features]
 f32 = []

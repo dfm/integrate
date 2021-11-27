@@ -1,4 +1,4 @@
-use integrate::gravity::Gravity;
+use integrate::forces::Gravity;
 use integrate::leapfrog::Leapfrog;
 use integrate::{Integrator, System, Vector};
 

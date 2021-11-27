@@ -41,3 +41,10 @@ impl ops::Sub for Vec2 {
         Self([self.0[0] - other.0[0], self.0[1] - other.0[1]])
     }
 }
+
+impl ops::Mul<Float> for Vec2 {
+    type Output = Self;
+    fn mul(self, scale: Float) -> Self {
+        Self([scale * self.0[0], scale * self.0[1]])
+    }
+}

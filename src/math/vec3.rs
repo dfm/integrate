@@ -51,3 +51,10 @@ impl ops::Sub for Vec3 {
         ])
     }
 }
+
+impl ops::Mul<Float> for Vec3 {
+    type Output = Self;
+    fn mul(self, scale: Float) -> Self {
+        Self([scale * self.0[0], scale * self.0[1], scale * self.0[2]])
+    }
+}
